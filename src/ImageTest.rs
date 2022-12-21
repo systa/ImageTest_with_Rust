@@ -90,7 +90,7 @@ unsafe fn updateDistanceData(p:&mut[u8;4]) {
     let g:i32 = p[1] as i32;
     let b:i32 = p[2] as i32;
     let mut closestDist:f64 = 9.0e42;
-    let mut distSum:f64 = 0.0;
+//    let mut distSum:f64 = 0.0;
     let mut closestIndex:i32 = -1;
     for i in 0..refColors.len() {
         let col = refColors[i];
@@ -113,7 +113,7 @@ unsafe fn updateDistanceData(p:&mut[u8;4]) {
 unsafe fn popularColors (n:u32) -> Vec<u32>{
     let mut sums = distSums.clone();
     let mut ret:Vec<u32> = Vec::new();
-    for i in 0..n {
+    for _i in 0..n {
         let mut popular:u32 = 0;
         let mut popJ = 0;
         for j in 0..sums.len() {
@@ -219,13 +219,13 @@ fn main() {
     // Use the open function to load an image from a Path.
     // `open` returns a `DynamicImage` on success.
     let args:Vec<String> = env::args().collect();
-    if (args.len() <2) {
+    if args.len() <2 {
         println!("Usage: cargo run -- imagefile [cadidate_color_freq [used_colors]]");
         return;
     }
-    if (args.len() > 2) {
+    if args.len() > 2 {
         cFreq = args[2].clone().parse().unwrap();
-        if (args.len()>3) {
+        if args.len()>3 {
             cUsed = args[3].clone().parse().unwrap();
         }
     }
@@ -243,7 +243,7 @@ fn main() {
     let mut imgbuf = image::ImageBuffer::new(width, height);
     println!("Data collecting");
     for x in 0..width {
-        if (x%200 == 0 ) {
+        if x%200 == 0  {
             println!("x={:?}", x);
         }
         for y in 0..height {
@@ -254,7 +254,7 @@ fn main() {
             }
         }
     }
-    let mut pop;   // indexes of most used colors
+    let pop;   // indexes of most used colors
     let mut popCols:Vec<[i32;3]> = Vec::new(); // actual colors,.
     unsafe {
         println!("----- NUMBER");
@@ -273,7 +273,7 @@ fn main() {
                     distSumsF[pop[i] as usize], refColors[pop[i] as usize]);
 
         }
-        */&
+        */
         println!("----- ");
     }
     println!("Processing");
