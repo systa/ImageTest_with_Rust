@@ -1,0 +1,6 @@
+*.jpg
+*.jpeg
+*.png
+*.xcf
+.DS_Store
+*~
