@@ -4,3 +4,4 @@
 *.xcf
 .DS_Store
 *~
+target
