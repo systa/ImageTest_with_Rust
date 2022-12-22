@@ -60,15 +60,25 @@ static mut distSums:Vec<u32> = Vec::new();
 static mut distSumsF:Vec<f64> = Vec::new();
 
 unsafe fn createRefColors(resolution:i32) {
-    let begin:i32 = 10;
+    let begin:i32 = 1; // 10 for non-logarithmic
     let end:i32 = 245;
     let step:i32 = ((end-begin)*10)/resolution;  // times 10 to minimize effect of the floor-bahavior of division
 
-// TODO: check if the values should be in logarithmic scale
     for r in 0..resolution {
        for g in 0..resolution {
           for b in 0..resolution {
-            refColors.push([begin+(r*step)/10, begin+(g*step)/10, begin+(b*step)/10]);
+            let mut col:[i32;3] = [begin+(r*step)/10, begin+(g*step)/10, begin+(b*step)/10];
+            if g == 0 && b == 0 && false { // debugging
+                println!("COL1: {:?}", col);
+            } 
+            //Simple approach to add logaritmic scale
+            col[0] = (((col[0] as f64).sqrt())*16.0) as i32; 
+            col[1] = (((col[1] as f64).sqrt())*16.0) as i32; 
+            col[2] = (((col[2] as f64).sqrt())*16.0) as i32; 
+            if g == 0 && b == 0 && false { // debugging
+                println!("COL2: {:?}", col);
+            } 
+            refColors.push(col);
             distSums.push(0);
             distSumsF.push(0.0);
           }
