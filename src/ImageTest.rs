@@ -4,7 +4,7 @@
 * the functionality.  Naturally, this means that I'm not very proud about the results.
 * 
 * The purpose of software is to read an image and radically limit the number of used
-* color shades. The algoritm is based on three steps
+* color shades. The algoritm is based on five steps
 *   1) a set of candidate colors is defined. See function createRefColors. The number of
 *      candidate colors is parametrized (n*n*n).
 *   2) Iterate through all pixels of the image:
@@ -14,6 +14,7 @@
 *   3) Take the most popular one from the reference colors. Function popularColors
 *   4) Iterate through all pixels of the image and replace with the closest in list of popular
 *      colors.
+*   5) If the fourth parameter exists, move the final colors with kind of simulated annealing.
 *
 * Notes: 
 *   - Rust compiler nags me on using "snake_case". I'm not convinced.
@@ -21,6 +22,7 @@
 *     the casts with "as"
 *   - Some data structures are almost static, but because their content depends on
 *     command-line parameters they are mutable. This lead to several "unsafe blocks"
+*   - Instead of code quality the attention has been put on testing the effect of different algorithms.
 *
 * Copyright Kari Systä, 2022.
 *
@@ -30,6 +32,7 @@
 use image::GenericImageView;
 use std::env;
 use std::cmp;
+use rand::Rng;
 
 // Not used anymore
 static cols: [[i32;3];13] = [
@@ -133,7 +136,7 @@ unsafe fn popularColors (n:u32) -> Vec<u32>{
             }
         }
         ret.push(popJ as u32);
-        println!("{:?} {:?} : {:?}", popJ, refColors[popJ as usize], sums[popJ as usize]);
+//        println!("{:?} {:?} : {:?}", popJ, refColors[popJ as usize], sums[popJ as usize]);
         sums[popJ as usize] = 0;
     }
     return ret.to_owned();
@@ -188,7 +191,7 @@ fn ssc(p:u8) -> u8 {
 */
 
 // Get the closest color to 'p' in 'pop'
-fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) {
+fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> f64 {
     let mut closest: f64 = 20000.0;
     let mut dist: f64;
     let mut closestI: usize = 0;
@@ -203,17 +206,20 @@ fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) {
     p[0] = pop[closestI][0] as u8;
     p[1] = pop[closestI][1] as u8;
     p[2] = pop[closestI][2] as u8;
+    return closest;
 }
 
 
 
 //Create a name for the output file
-fn outputName(base:String,cf:i32, cu:u32) -> String {
+fn outputName(base:String,cf:i32, cu:u32, cr:u32) -> String {
     let mut newName:String = base;
     newName.push_str("P-");
     newName.push_str(&cf.to_string());
     newName.push_str("-");
     newName.push_str(&cu.to_string());
+    newName.push_str("-");
+    newName.push_str(&cr.to_string());
     newName.push_str(".jpg");
     return newName;
 }
@@ -224,23 +230,27 @@ fn main() {
     let height: u32;
     let filename:String;
     let outname:String;
+    let mut rounds:u32 = 0;
     let mut cFreq:i32 = 7;
     let mut cUsed:u32 = 16;
     // Use the open function to load an image from a Path.
     // `open` returns a `DynamicImage` on success.
     let args:Vec<String> = env::args().collect();
     if args.len() <2 {
-        println!("Usage: cargo run -- imagefile [cadidate_color_freq [used_colors]]");
+        println!("Usage: cargo run -- imagefile [cadidate_color_freq [used_colors [fine_tuning_rounds]]");
         return;
     }
     if args.len() > 2 {
         cFreq = args[2].clone().parse().unwrap();
         if args.len()>3 {
             cUsed = args[3].clone().parse().unwrap();
+	    if args.len() > 4 {
+               rounds = args[4].clone().parse().unwrap();
+	    } 
         }
     }
     filename = args[1].clone();
-    outname = outputName(filename.clone(), cFreq, cUsed);
+    outname = outputName(filename.clone(), cFreq, cUsed, rounds);
     println!("Starting");
     let img = image::open(filename).unwrap();
 
@@ -253,7 +263,7 @@ fn main() {
     let mut imgbuf = image::ImageBuffer::new(width, height);
     println!("Data collecting");
     for x in 0..width {
-        if x%200 == 0  {
+        if x%200 == 0 && false {
             println!("x={:?}", x);
         }
         for y in 0..height {
@@ -275,7 +285,7 @@ fn main() {
                      popCols.push(refColors[pop[i] as usize]);   
         }
         /*
-        * Was an alternative approach thatdid not work.
+        * Was an alternative approach that did not work well.
         println!("----- SUMS");
         pop = usePopularF(cUsed);
         for i in 0..pop.len() {
@@ -286,7 +296,72 @@ fn main() {
         */
         println!("----- ");
     }
-    println!("Processing");
+    println!("Fine tuning");
+    let mut jump = 64;
+    let mut rng = rand::thread_rng();
+ // Get current total distance_
+    let mut currentSum:f64 = 0.0;
+    for x in 0..width {
+        for y in 0..height {
+            let spixel = img.get_pixel(x, y);
+            let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
+            currentSum += cscPop(&mut data, &popCols);        
+       }
+    }
+    while (jump > 1 && rounds > 0) {
+       println!("JUMP:{:?}", jump);
+       for i in 0..popCols.len() {
+           for j in 0..rounds {
+                let rr:i32 = (rng.gen_range(-255..255)*jump)/256;
+                let rg:i32 = (rng.gen_range(-255..255)*jump)/256;
+                let rb:i32 = (rng.gen_range(-255..255)*jump)/256;
+                let mut targetColor = popCols[i];
+                let mut save:[i32;3] = targetColor;      
+                targetColor[0] += rr;
+                if targetColor[0] < 0 {targetColor[0] = 0;}
+                if targetColor[0] > 255 {targetColor[0] = 255;}
+                targetColor[1] += rg;
+                if targetColor[1] < 0 {targetColor[1] = 0;}
+                if targetColor[1] > 255 {targetColor[1] = 255;}
+                targetColor[2] += rb;
+                if targetColor[2] < 0 {targetColor[2] = 0;}
+                if targetColor[2] > 255 {targetColor[2] = 255;}
+                popCols[i] = targetColor;
+                let mut distanceSum:f64 = 0.0;
+                for x in 0..width {
+                   for y in 0..height {
+                      let spixel = img.get_pixel(x, y);
+                      let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
+                      distanceSum += cscPop(&mut data, &popCols);  // TODO: this calculated too much -
+                                                                   // should only recalculate the changed color.
+/*
+distance(data[0] as i32, targetColor[0],
+                                              data[1] as i32, targetColor[1],
+                                              data[2] as i32, targetColor[2]);
+*/
+                   }
+                }
+		if i == 0 && j == 0 && jump == 8 {
+                    println!("Save={:?} targerC={:?} currentSum={:?} distanceSum={:?}",
+                             save, targetColor, currentSum, distanceSum);
+                }
+                if distanceSum < currentSum {
+                   currentSum = distanceSum;
+                   println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}", jump, i, j, save, targetColor);
+                } else {
+                   popCols[i] = save;
+                }
+           }
+       }
+       jump /= 2;
+    }
+    unsafe {
+       for i in 0..pop.len() {
+            println!("pop{:?} {:?} {:?} {:?} {:?}", i, pop[i], distSums[pop[i] as usize],
+                     distSumsF[pop[i] as usize], popCols[i]);
+       }
+    }
+    println!("Finalizing");
     for x in 0..width {
         for y in 0..height {
             let spixel = img.get_pixel(x, y);

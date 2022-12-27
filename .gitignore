@@ -2,6 +2,8 @@
 *.jpeg
 *.png
 *.xcf
+run*.sh
+out*.txt
 .DS_Store
 *~
 target
