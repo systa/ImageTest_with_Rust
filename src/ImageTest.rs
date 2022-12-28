@@ -196,6 +196,7 @@ fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> f64 {
     let mut dist: f64;
     let mut closestI: usize = 0;
     let r:[i32;3] = [p[0] as i32, p[1] as i32, p[2] as i32];
+//    let r:[i32;3] = p as [i32;3];
     for i in 0..pop.len() {
         dist = distance(r[0], pop[i][0], r[1], pop[i][1], r[2], pop[i][2]);
         if dist < closest {
@@ -208,6 +209,27 @@ fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> f64 {
     p[2] = pop[closestI][2] as u8;
     return closest;
 }
+
+// Get the closest color to 'p' in 'pop'
+fn cscPop1(mut r: &mut[i32;3], pop:&Vec<[i32;3]>) -> f64 {
+    let mut closest: f64 = 2000000.0;
+    let mut dist: f64;
+    let mut closestI: usize = 0;
+//    let r:[i32;3] = [p[0] as i32, p[1] as i32, p[2] as i32];
+//    let r:[i32;3] = p as [i32;3];
+    for i in 0..pop.len() {
+        dist = distance(r[0], pop[i][0], r[1], pop[i][1], r[2], pop[i][2]);
+        if dist < closest {
+            closest = dist;
+            closestI = i as usize;  
+        }
+    }
+//    r[0] = pop[closestI][0];
+//    r[1] = pop[closestI][1];
+//    r[2] = pop[closestI][2];
+    return closest;
+}
+
 
 
 
@@ -304,8 +326,8 @@ fn main() {
     for x in 0..width {
         for y in 0..height {
             let spixel = img.get_pixel(x, y);
-            let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
-            currentSum += cscPop(&mut data, &popCols);        
+            let mut data:[i32;3] = [spixel[0] as i32, spixel[1] as i32, spixel[2] as i32];
+            currentSum += cscPop1(&mut data, &popCols);        
        }
     }
     while (jump > 1 && rounds > 0) {
@@ -331,9 +353,9 @@ fn main() {
                 for x in 0..width {
                    for y in 0..height {
                       let spixel = img.get_pixel(x, y);
-                      let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
-                      distanceSum += cscPop(&mut data, &popCols);  // TODO: this calculated too much -
-                                                                   // should only recalculate the changed color.
+                      let mut data:[i32;3] = [spixel[0] as i32, spixel[1] as i32, spixel[2] as i32];
+                      distanceSum += cscPop1(&mut data, &popCols);  // TODO: this calculates too much -
+                                                                   // should only recalculate for the changed color.
                    }
                 }
                 if distanceSum < currentSum {
