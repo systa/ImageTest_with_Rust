@@ -192,7 +192,7 @@ fn ssc(p:u8) -> u8 {
 
 // Get the closest color to 'p' in 'pop'
 fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> f64 {
-    let mut closest: f64 = 20000.0;
+    let mut closest: f64 = 2000000.0;
     let mut dist: f64;
     let mut closestI: usize = 0;
     let r:[i32;3] = [p[0] as i32, p[1] as i32, p[2] as i32];
@@ -319,13 +319,13 @@ fn main() {
                 let mut save:[i32;3] = targetColor;      
                 targetColor[0] += rr;
                 if targetColor[0] < 0 {targetColor[0] = 0;}
-                if targetColor[0] > 255 {targetColor[0] = 255;}
+                else if targetColor[0] > 255 {targetColor[0] = 255;}
                 targetColor[1] += rg;
                 if targetColor[1] < 0 {targetColor[1] = 0;}
-                if targetColor[1] > 255 {targetColor[1] = 255;}
+                else if targetColor[1] > 255 {targetColor[1] = 255;}
                 targetColor[2] += rb;
                 if targetColor[2] < 0 {targetColor[2] = 0;}
-                if targetColor[2] > 255 {targetColor[2] = 255;}
+                else if targetColor[2] > 255 {targetColor[2] = 255;}
                 popCols[i] = targetColor;
                 let mut distanceSum:f64 = 0.0;
                 for x in 0..width {
@@ -334,20 +334,13 @@ fn main() {
                       let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
                       distanceSum += cscPop(&mut data, &popCols);  // TODO: this calculated too much -
                                                                    // should only recalculate the changed color.
-/*
-distance(data[0] as i32, targetColor[0],
-                                              data[1] as i32, targetColor[1],
-                                              data[2] as i32, targetColor[2]);
-*/
                    }
                 }
-		if i == 0 && j == 0 && jump == 8 {
-                    println!("Save={:?} targerC={:?} currentSum={:?} distanceSum={:?}",
-                             save, targetColor, currentSum, distanceSum);
-                }
                 if distanceSum < currentSum {
+                   let diff = currentSum - distanceSum;
                    currentSum = distanceSum;
-                   println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}", jump, i, j, save, targetColor);
+                   println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}, win:{:?}",
+                            jump, i, j, save, targetColor, diff);
                 } else {
                    popCols[i] = save;
                 }
