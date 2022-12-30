@@ -60,7 +60,7 @@ static cols: [[i32;3];13] = [
 // Value-range is actually within u8, but it is used in i32 calculation and Rust does not cast implicitly
 static mut refColors:Vec<[i32;3]> = Vec::new();
 static mut distSums:Vec<u32> = Vec::new();
-static mut distSumsF:Vec<f64> = Vec::new();
+static mut distSumsF:Vec<u64> = Vec::new();
 
 unsafe fn createRefColors(resolution:i32) {
     let begin:i32 = 1; // 10 for non-logarithmic
@@ -83,32 +83,30 @@ unsafe fn createRefColors(resolution:i32) {
             } 
             refColors.push(col);
             distSums.push(0);
-            distSumsF.push(0.0);
+            distSumsF.push(0);
           }
         }
     }
     println!("Create {:?} ref colors", refColors.len());
 }
 
-fn distance(r1:i32, r2:i32, g1:i32, g2:i32, b1:i32, b2:i32) -> f64 {
+fn distance(r1:i32, r2:i32, g1:i32, g2:i32, b1:i32, b2:i32) -> u32 {
     let r:i32 = (r1-r2)*(r1-r2);
     let g:i32 = (g1-g2)*(g1-g2);
     let b:i32 = (b1-b2)*(b1-b2);
-//    let dom:i32 = cmp::max(r,cmp::max(g,b));
-    return ((r+g+b) as f64); //.sqrt().sqrt();
+    return (r+g+b) as u32; 
 }
 
 unsafe fn updateDistanceData(p:&mut[u8;4]) {
     let r:i32 = p[0] as i32;
     let g:i32 = p[1] as i32;
     let b:i32 = p[2] as i32;
-    let mut closestDist:f64 = 9.0e42;
-//    let mut distSum:f64 = 0.0;
+    let mut closestDist:u32 = 2000000000;
     let mut closestIndex:i32 = -1;
     for i in 0..refColors.len() {
         let col = refColors[i];
-        let dist:f64 = distance(r,col[0], g, col[1], b, col[2]);
-        distSumsF[i] += dist;
+        let dist:u32 = distance(r,col[0], g, col[1], b, col[2]);
+        distSumsF[i] += dist as u64;
         if dist < closestDist {
             closestDist = dist;
             closestIndex = i as i32;
@@ -146,7 +144,7 @@ unsafe fn usePopularF (n:u32) -> Vec<u32>{
     let mut sums = distSumsF.clone();
     let mut ret:Vec<u32> = Vec::new();
     for i in 0..n {
-        let mut popular:f64 = 9.9e45;
+        let mut popular:u64 = 2000000000;
         let mut popJ = 0;
         for j in 0..sums.len() {
             if sums[j] < popular {
@@ -155,45 +153,16 @@ unsafe fn usePopularF (n:u32) -> Vec<u32>{
             }
         }
         ret.push(popJ as u32);
-        sums[popJ as usize] = 9.9e45;
+        sums[popJ as usize] = 2000000000; // to mark as taken
     }
     return ret.to_owned();
 }
 
-/*
- * These three are not used at the moment
-fn csc(mut p: &mut[u8;4]) {
-    let mut closest: u16 = 20000;
-    let mut dist: u16;
-    let mut closestI: usize = 0;
-    let r:[i32;3] = [p[0] as i32, p[1] as i32, p[2] as i32];
-    for i in 0..13 {
-        dist = (((r[0]-cols[i][0])*(r[0]-cols[i][0]) +
-                 (r[1]-cols[i][1])*(r[1]-cols[i][1]) +
-                 (r[2]-cols[i][2])*(r[2]-cols[i][2])) as f64).sqrt() as u16;
-        if dist < closest {
-            closest = dist;
-            closestI = i as usize;  
-        }
-    }
-    p[0] = cols[closestI][0] as u8;
-    p[1] = cols[closestI][1] as u8;
-    p[2] = cols[closestI][2] as u8;
-}
-fn ssc(p:u8) -> u8 {
-   let mut tmp: u16 = (p as u16 + 64);
-   tmp = tmp/128*128;
-   if tmp > 255 {
-       tmp = 255;
-   }
-   return tmp as u8;
-}
-*/
 
 // Get the closest color to 'p' in 'pop'
-fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> f64 {
-    let mut closest: f64 = 2000000.0;
-    let mut dist: f64;
+fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> u32 {
+    let mut closest: u32 = 2000000000;
+    let mut dist: u32;
     let mut closestI: usize = 0;
     let r:[i32;3] = [p[0] as i32, p[1] as i32, p[2] as i32];
 //    let r:[i32;3] = p as [i32;3];
@@ -210,13 +179,12 @@ fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> f64 {
     return closest;
 }
 
-// Get the closest color to 'p' in 'pop'
-fn cscPop1(mut r: &mut[i32;3], pop:&Vec<[i32;3]>) -> f64 {
-    let mut closest: f64 = 2000000.0;
-    let mut dist: f64;
+// Get the closest color to 'p' in 'pop' - optimized for finetuning
+// TODO check if parameters should be mutable
+fn cscPop1(mut r: &mut[i32;3], pop:&Vec<[i32;3]>) -> u32 {
+    let mut closest: u32 = 2000000000;
+    let mut dist: u32;
     let mut closestI: usize = 0;
-//    let r:[i32;3] = [p[0] as i32, p[1] as i32, p[2] as i32];
-//    let r:[i32;3] = p as [i32;3];
     for i in 0..pop.len() {
         dist = distance(r[0], pop[i][0], r[1], pop[i][1], r[2], pop[i][2]);
         if dist < closest {
@@ -224,9 +192,6 @@ fn cscPop1(mut r: &mut[i32;3], pop:&Vec<[i32;3]>) -> f64 {
             closestI = i as usize;  
         }
     }
-//    r[0] = pop[closestI][0];
-//    r[1] = pop[closestI][1];
-//    r[2] = pop[closestI][2];
     return closest;
 }
 
@@ -322,15 +287,15 @@ fn main() {
     let mut jump = 64;
     let mut rng = rand::thread_rng();
  // Get current total distance_
-    let mut currentSum:f64 = 0.0;
+    let mut currentSum:u64 = 0;
     for x in 0..width {
         for y in 0..height {
             let spixel = img.get_pixel(x, y);
             let mut data:[i32;3] = [spixel[0] as i32, spixel[1] as i32, spixel[2] as i32];
-            currentSum += cscPop1(&mut data, &popCols);        
+            currentSum += cscPop1(&mut data, &popCols) as u64;        
        }
     }
-    while (jump > 1 && rounds > 0) {
+    while jump > 1 && rounds > 0 {
        println!("JUMP:{:?}", jump);
        for i in 0..popCols.len() {
            for j in 0..rounds {
@@ -349,12 +314,12 @@ fn main() {
                 if targetColor[2] < 0 {targetColor[2] = 0;}
                 else if targetColor[2] > 255 {targetColor[2] = 255;}
                 popCols[i] = targetColor;
-                let mut distanceSum:f64 = 0.0;
+                let mut distanceSum:u64 = 0;
                 for x in 0..width {
                    for y in 0..height {
                       let spixel = img.get_pixel(x, y);
                       let mut data:[i32;3] = [spixel[0] as i32, spixel[1] as i32, spixel[2] as i32];
-                      distanceSum += cscPop1(&mut data, &popCols);  // TODO: this calculates too much -
+                      distanceSum += cscPop1(&mut data, &popCols) as u64;  // TODO: this calculates too much -
                                                                    // should only recalculate for the changed color.
                    }
                 }
