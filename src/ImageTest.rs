@@ -1,32 +1,11 @@
 /*
 * This simple program was mainly written to learn basics of the Rust programming language.
 * The initial version evolved as my learned more about Rust and as I got new ideas about
-* the functionality.  Naturally, this means that I'm not very proud about the results.
+* the functionality.  Naturally, this means that I'm not very proud about all the results.
 * 
-* The purpose of software is to read an image and radically limit the number of used
-* color shades. The algoritm is based on five steps
-*   1) a set of candidate colors is defined. See function createRefColors. The number of
-*      candidate colors is parametrized (n*n*n).
-*   2) Iterate through all pixels of the image:
-*       Function updateDistanceData:
-*        - calculate distance (see the fn "distance") to each candidate colors
-*        - update counter of the closest color
-*   3) Take the most popular one from the reference colors. Function popularColors
-*   4) Iterate through all pixels of the image and replace with the closest in list of popular
-*      colors.
-*   5) If the fourth parameter exists, move the final colors with kind of simulated annealing.
-*
-* Notes: 
-*   - Rust compiler nags me on using "snake_case". I'm not convinced.
-*   - Selection between integer types (u9, i32, u32) is a bit arbitrary. One goal was to minimize
-*     the casts with "as"
-*   - Some data structures are almost static, but because their content depends on
-*     command-line parameters they are mutable. This lead to several "unsafe blocks"
-*   - Instead of code quality the attention has been put on testing the effect of different algorithms.
+* For more info, see README.md.
 *
 * Copyright Kari Systä, 2022.
-*
-* Thanks to https://lib.rs/crates/image and example for giving me a starting point.
 *      
 */
 use image::GenericImageView;
@@ -34,28 +13,6 @@ use std::env;
 use std::cmp;
 use rand::Rng;
 
-// Not used anymore
-static cols: [[i32;3];13] = [
-    [100, 100, 100],
-    [100, 100, 245],
-    [100, 245, 100],
-    [100, 245, 245],
-    [245, 100, 100],
-    [245, 100, 245],
-    [245, 245, 100],
-    [245, 245, 245],
-    [220, 220, 220],
-    [150, 150, 150],
- //   [50, 50, 150],
- //   [50, 150, 50],
- //   [150, 50, 50],
-//    [150, 50, 150],
-//    [150, 150, 50],
-//    [150, 150, 50],
-    [50, 50, 50],
-    [180, 180, 180],
-    [10, 10, 10]
-];
 
 // Value-range is actually within u8, but it is used in i32 calculation and Rust does not cast implicitly
 static mut refColors:Vec<[i32;3]> = Vec::new();
@@ -271,16 +228,6 @@ fn main() {
                      distSumsF[pop[i] as usize], refColors[pop[i] as usize]);
                      popCols.push(refColors[pop[i] as usize]);   
         }
-        /*
-        * Was an alternative approach that did not work well.
-        println!("----- SUMS");
-        pop = usePopularF(cUsed);
-        for i in 0..pop.len() {
-            println!("pop{:?} {:?} {:?} {:?} {:?}", i, pop[i], distSums[pop[i] as usize],
-                    distSumsF[pop[i] as usize], refColors[pop[i] as usize]);
-
-        }
-        */
         println!("----- ");
     }
     println!("Fine tuning");
@@ -297,6 +244,7 @@ fn main() {
     }
     while jump > 1 && rounds > 0 {
        println!("JUMP:{:?}", jump);
+       let oldCols = popCols.clone(); 
        for i in 0..popCols.len() {
            for j in 0..rounds {
                 let rr:i32 = (rng.gen_range(-255..255)*jump)/256;
@@ -326,12 +274,17 @@ fn main() {
                 if distanceSum < currentSum {
                    let diff = currentSum - distanceSum;
                    currentSum = distanceSum;
-                   println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}, win:{:?}",
-                            jump, i, j, save, targetColor, diff);
+                   println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}={:?},  win:{:?}, totDistance:{:?}",
+                            jump, i, j, save, targetColor,
+                            [targetColor[0]-save[0], targetColor[1]-save[1], targetColor[2]-save[2]],
+                            diff, currentSum);
                 } else {
                    popCols[i] = save;
                 }
            }
+       }
+       for i in 0..popCols.len() {
+        println!("{:?}: {:?} = {:?}", i, oldCols[i], popCols[i]);
        }
        jump /= 2;
     }
@@ -349,13 +302,7 @@ fn main() {
             let image::Rgba(_data) = *dpixel;
 //            *dpixel = image::Rgba([ssc(spixel[2]), ssc(spixel[0]), ssc(spixel[1]), spixel[3]]);
             let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
-            if y < 256 && false {   // To test
-//                let y1:u8 = ((y as f64).sqrt() * 15.9) as u8; 
-                let y1:u8 = ((y *y )/256) as u8; 
-                data = [y1, y1, y1, /*(x*255/width) as u8,*/ spixel[3]];
-            } else {
-                cscPop(&mut data, &popCols);
-            }
+            cscPop(&mut data, &popCols);
             *dpixel = image::Rgba(data);
         }
     }
