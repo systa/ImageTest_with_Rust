@@ -4,6 +4,7 @@
 *.xcf
 run*.sh
 out*.txt
+var*.txt
 .DS_Store
 *~
 target

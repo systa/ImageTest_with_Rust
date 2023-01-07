@@ -12,6 +12,8 @@ use image::GenericImageView;
 use std::env;
 use std::cmp;
 use rand::Rng;
+// use int_hash::IntHashSet;
+use std::collections::HashSet;
 
 
 // Value-range is actually within u8, but it is used in i32 calculation and Rust does not cast implicitly
@@ -242,10 +244,16 @@ fn main() {
             currentSum += cscPop1(&mut data, &popCols) as u64;        
        }
     }
+//    let mut tried:IntHashSet<i32> = IntHashSet::default();; 
+
     while jump > 1 && rounds > 0 {
        println!("JUMP:{:?}", jump);
        let oldCols = popCols.clone(); 
+       let mut oldc = 0;
+       let mut newc = 0;
        for i in 0..popCols.len() {
+            let mut tried:HashSet<i32> = HashSet::new();
+            let mut key;
            for j in 0..rounds {
                 let rr:i32 = (rng.gen_range(-255..255)*jump)/256;
                 let rg:i32 = (rng.gen_range(-255..255)*jump)/256;
@@ -261,31 +269,42 @@ fn main() {
                 targetColor[2] += rb;
                 if targetColor[2] < 0 {targetColor[2] = 0;}
                 else if targetColor[2] > 255 {targetColor[2] = 255;}
-                popCols[i] = targetColor;
-                let mut distanceSum:u64 = 0;
-                for x in 0..width {
-                   for y in 0..height {
-                      let spixel = img.get_pixel(x, y);
-                      let mut data:[i32;3] = [spixel[0] as i32, spixel[1] as i32, spixel[2] as i32];
-                      distanceSum += cscPop1(&mut data, &popCols) as u64;  // TODO: this calculates too much -
+//                key = (targetColor[0]*256*256+targetColor[1]*256+targetColor[2])*(popCols.len() as i32) + i as i32;
+                key = targetColor[0]*256*256+targetColor[1]*256+targetColor[2];
+                if ! tried.contains(&key) {
+                    tried.insert(key);
+                    popCols[i] = targetColor;
+                    let mut distanceSum:u64 = 0;
+                    for x in 0..width {
+                        for y in 0..height {
+                            let spixel = img.get_pixel(x, y);
+                            let mut data:[i32;3] = [spixel[0] as i32, spixel[1] as i32, spixel[2] as i32];
+                            distanceSum += cscPop1(&mut data, &popCols) as u64;  // TODO: this calculates too much -
                                                                    // should only recalculate for the changed color.
-                   }
-                }
-                if distanceSum < currentSum {
-                   let diff = currentSum - distanceSum;
-                   currentSum = distanceSum;
-                   println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}={:?},  win:{:?}, totDistance:{:?}",
-                            jump, i, j, save, targetColor,
-                            [targetColor[0]-save[0], targetColor[1]-save[1], targetColor[2]-save[2]],
-                            diff, currentSum);
+                        }
+                    }
+                    if distanceSum < currentSum {
+                       let diff = currentSum - distanceSum;
+                       currentSum = distanceSum;
+                       /*
+                       println!("Finetune {:?} {:?} {:?} : {:?}=>{:?}={:?},  win:{:?}, totDistance:{:?}",
+                                jump, i, j, save, targetColor,
+                                [targetColor[0]-save[0], targetColor[1]-save[1], targetColor[2]-save[2]],
+                                 diff, currentSum);
+                                 */
+                    } else {
+                        popCols[i] = save;
+                    }
+                    newc += 1;
                 } else {
-                   popCols[i] = save;
+                    oldc += 1;
                 }
            }
        }
        for i in 0..popCols.len() {
         println!("{:?}: {:?} = {:?}", i, oldCols[i], popCols[i]);
        }
+       println!("new: {:?}, tried: {:?}", newc, oldc);
        jump /= 2;
     }
     unsafe {
