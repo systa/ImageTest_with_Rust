@@ -118,8 +118,8 @@ unsafe fn usePopularF (n:u32) -> Vec<u32>{
 }
 
 
-// Get the closest color to 'p' in 'pop'
-fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> u32 {
+// Get the closest color to 'p' in 'pop'; returns the index
+fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> usize {
     let mut closest: u32 = 2000000000;
     let mut dist: u32;
     let mut closestI: usize = 0;
@@ -135,7 +135,7 @@ fn cscPop(mut p: &mut[u8;4], pop:&Vec<[i32;3]>) -> u32 {
     p[0] = pop[closestI][0] as u8;
     p[1] = pop[closestI][1] as u8;
     p[2] = pop[closestI][2] as u8;
-    return closest;
+    return closestI;
 }
 
 // Get the closest color to 'p' in 'pop' - optimized for finetuning
@@ -321,12 +321,39 @@ fn main() {
             let image::Rgba(_data) = *dpixel;
 //            *dpixel = image::Rgba([ssc(spixel[2]), ssc(spixel[0]), ssc(spixel[1]), spixel[3]]);
             let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
-            cscPop(&mut data, &popCols);
+            let i = cscPop(&mut data, &popCols);
+	    if x > 100 && x < 103 && y > 100 && y < 103 {
+	       println!("{:?} at {:?},{:?} - {:?},{:?},{:?},{:?}", i, x, y, data[0], data[1], data[2], data[3]); 
+	    }
             *dpixel = image::Rgba(data);
         }
     }
     println!("Saving");
     // Write the contents of this image to the Writer in XXX format.
-    imgbuf.save(outname).unwrap();
-    
+    imgbuf.save(outname.clone()).unwrap();
+
+// Write separate layer-files
+   for i in 0..popCols.len() {
+       let mut layerName = outname.clone();
+        layerName.push_str(&i.to_string());
+        layerName.push_str(".png");
+    	let mut layerbuf = image::ImageBuffer::new(width, height);
+    	for x in 0..width {
+            for y in 0..height {
+            	let spixel = img.get_pixel(x, y);
+            	let dpixel = layerbuf.get_pixel_mut(x, y);
+            	let image::Rgba(_data) = *dpixel;
+            	let mut data:[u8;4] = [spixel[0], spixel[1], spixel[2], spixel[3]];
+            	let j = cscPop(&mut data, &popCols);
+//	    	if x > 100 && x < 103 && y > 100 && y < 103 {
+//	       	   println!("{:?} at {:?},{:?} - {:?},{:?},{:?},{:?}", j, x, y, data[0], data[1], data[2], data[3]); 
+//	    	}
+	    	if j == i {
+//	       println!("5 at {:?},{:?} - {:?},{:?},{:?},{:?}", x, y, data[0], data[1], data[2], data[3]); 
+	           *dpixel = image::Rgba(data);
+	        }	    
+	    }
+	}
+    	layerbuf.save(layerName).unwrap();
+   }
 }
