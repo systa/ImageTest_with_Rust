@@ -18,10 +18,11 @@ color shades. The algoritm is based on five steps
    5) If the fourh parameter exists and in greater than zero, a kind of simultaneus annealing is run on
       the results from step 4.
 
-See folder examples for example uses.
+Usage: $BINFOLDER/ImageTest imagefile ['-layers'] [cadidate_color_freq [used_colors [fine_tuning_rounds]]
+
+See folder some old examples for  uses.
 
 Notes: 
-   - Rust compiler nags me on using "snake_case". I'm not convinced.
    - Selection between integer types (u9, i32, u32) is a bit arbitrary. One goal was to minimize
      the casts with "as"
    - Some data structures are almost static, but because their content depends on
