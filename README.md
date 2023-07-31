@@ -29,5 +29,5 @@ Notes:
    - Instead of clean code my interest has been on the effects of the algorithm.
 
 
-Copyright Kari Systä, 2022.
+Copyright Kari Systä, 2022-2023.
 Thanks to https://lib.rs/crates/image and example for giving me a starting point.
